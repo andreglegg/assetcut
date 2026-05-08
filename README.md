@@ -166,6 +166,27 @@ assetcut-mcp --tools
 assetcut-mcp --client-config
 ```
 
+Install AssetCut into local MCP clients:
+
+```bash
+assetcut mcp install all
+assetcut mcp doctor
+```
+
+Install one client at a time:
+
+```bash
+assetcut mcp install claude-code
+assetcut mcp install claude-desktop
+assetcut mcp install codex
+```
+
+Preview changes without writing config:
+
+```bash
+assetcut mcp install all --dry-run
+```
+
 MCP clients such as Claude Desktop or Codex start `assetcut-mcp` as a local stdio
 server. After launch, the client asks the server for its tool list and receives
 the tool names, descriptions, and input schemas automatically.

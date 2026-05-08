@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -12,6 +13,7 @@ from rich.table import Table
 
 from assetcut import __version__
 from assetcut import api as assetcut_api
+from assetcut import mcp_install as mcp_setup
 from assetcut.alpha import add_transparent_padding, trim_to_alpha
 from assetcut.atlas import build_atlas
 from assetcut.batch import BatchRecord, BatchSummary
@@ -41,6 +43,21 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+mcp_app = typer.Typer(help="Install and inspect AssetCut MCP client configuration.")
+app.add_typer(mcp_app, name="mcp")
+
+
+class McpInstallTarget(StrEnum):
+    all = "all"
+    claude_code = "claude-code"
+    claude_desktop = "claude-desktop"
+    codex = "codex"
+
+
+class ClaudeCodeScope(StrEnum):
+    local = "local"
+    user = "user"
+    project = "project"
 
 
 def _merged_options(
@@ -127,6 +144,37 @@ def _print_json(payload: object) -> None:
     console.print_json(json.dumps(payload, indent=2))
 
 
+def _server_command(server: Path | None) -> str:
+    if server is None:
+        return mcp_setup.default_server_command()
+    return str(server.expanduser().resolve())
+
+
+def _mcp_install_targets(target: McpInstallTarget) -> list[McpInstallTarget]:
+    if target is McpInstallTarget.all:
+        return [
+            McpInstallTarget.claude_code,
+            McpInstallTarget.claude_desktop,
+            McpInstallTarget.codex,
+        ]
+    return [target]
+
+
+def _print_mcp_result(result: mcp_setup.InstallResult) -> None:
+    status = "OK" if result.ok else "FAILED"
+    console.print(f"[bold]{status}[/bold] {result.target}: {result.message}")
+    if result.config_path:
+        console.print(f"Config: {result.config_path}")
+    if result.command:
+        console.print(f"Command: {result.command}")
+
+
+def _print_mcp_status(status: mcp_setup.McpStatus) -> None:
+    label = "OK" if status.ok else "FAILED"
+    color = "green" if status.ok else "red"
+    console.print(f"[{color}]{label}[/{color}] {status.target}: {status.message}")
+
+
 @app.callback()
 def main(
     version: Annotated[
@@ -137,6 +185,99 @@ def main(
     if version:
         console.print(__version__)
         raise typer.Exit()
+
+
+@mcp_app.command("install")
+def mcp_install_cmd(
+    target: Annotated[
+        McpInstallTarget,
+        typer.Argument(help="Client to configure."),
+    ] = McpInstallTarget.all,
+    server: Annotated[
+        Path | None,
+        typer.Option("--server", help="Path to the assetcut-mcp executable."),
+    ] = None,
+    scope: Annotated[
+        ClaudeCodeScope,
+        typer.Option("--scope", help="Claude Code scope."),
+    ] = ClaudeCodeScope.user,
+    claude_desktop_config: Annotated[
+        Path | None,
+        typer.Option("--claude-desktop-config", help="Override Claude Desktop config path."),
+    ] = None,
+    codex_config: Annotated[
+        Path | None,
+        typer.Option("--codex-config", help="Override Codex config path."),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Print planned changes without writing config."),
+    ] = False,
+) -> None:
+    """Install AssetCut MCP into Claude Code, Claude Desktop, or Codex."""
+    server_command = _server_command(server)
+    targets = _mcp_install_targets(target)
+
+    if dry_run:
+        console.print(f"AssetCut MCP command: {server_command}")
+        for item in targets:
+            console.print(f"Would configure: {item.value}")
+        raise typer.Exit()
+
+    failures = 0
+    for item in targets:
+        try:
+            if item is McpInstallTarget.claude_code:
+                result = mcp_setup.install_claude_code(
+                    server_command,
+                    scope=scope.value,
+                )
+            elif item is McpInstallTarget.claude_desktop:
+                result = mcp_setup.install_claude_desktop(
+                    server_command,
+                    config_path=claude_desktop_config,
+                )
+            elif item is McpInstallTarget.codex:
+                result = mcp_setup.install_codex(
+                    server_command,
+                    config_path=codex_config,
+                )
+            else:
+                continue
+            _print_mcp_result(result)
+        except Exception as exc:
+            failures += 1
+            console.print(f"[red]FAILED[/red] {item.value}: {exc}")
+
+    raise typer.Exit(code=1 if failures else 0)
+
+
+@mcp_app.command("doctor")
+def mcp_doctor_cmd(
+    server: Annotated[
+        Path | None,
+        typer.Option("--server", help="Path to the assetcut-mcp executable."),
+    ] = None,
+    claude_desktop_config: Annotated[
+        Path | None,
+        typer.Option("--claude-desktop-config", help="Override Claude Desktop config path."),
+    ] = None,
+    codex_config: Annotated[
+        Path | None,
+        typer.Option("--codex-config", help="Override Codex config path."),
+    ] = None,
+) -> None:
+    """Check AssetCut MCP server and client configuration."""
+    server_command = _server_command(server)
+    statuses = [
+        mcp_setup.check_server(server_command),
+        mcp_setup.check_claude_code(server_command),
+        mcp_setup.check_claude_desktop(server_command, config_path=claude_desktop_config),
+        mcp_setup.check_codex(server_command, config_path=codex_config),
+    ]
+    for status in statuses:
+        _print_mcp_status(status)
+    raise typer.Exit(code=0 if all(status.ok for status in statuses) else 1)
 
 
 @app.command()
