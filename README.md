@@ -2,7 +2,7 @@
 
 AssetCut is a local Python CLI for removing image backgrounds from game assets and exporting real transparent PNGs.
 
-It is built for sprites, props, traps, UI elements, icons, and generated assets that often contain baked checkerboard backgrounds or fake transparency.
+It is built for sprites, props, UI elements, icons, and generated assets that often contain baked checkerboard backgrounds or fake transparency.
 
 ## Features
 
@@ -181,3 +181,7 @@ mypy src
 - Cutouts are saved as PNG RGBA.
 - Existing outputs are preserved unless `--overwrite` is passed.
 - Everything runs locally; no cloud API is required.
+
+## Credits
+
+Developed by Andre Glegg with AI coding assistance.

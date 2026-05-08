@@ -30,7 +30,7 @@ def test_mcp_doctor_tool_returns_structured_result() -> None:
 
 
 def test_mcp_cut_image_tool_supports_dry_run(tmp_path: Path) -> None:
-    input_path = tmp_path / "trap.png"
+    input_path = tmp_path / "asset.png"
     _checkerboard_asset(input_path)
 
     result = mcp_server.assetcut_cut_image(str(input_path), dry_run=True)
@@ -38,7 +38,7 @@ def test_mcp_cut_image_tool_supports_dry_run(tmp_path: Path) -> None:
     assert result["ok"] is True
     assert result["dry_run"] is True
     assert result["backend"] == "checkerboard"
-    assert not (tmp_path / "trap-cutout.png").exists()
+    assert not (tmp_path / "asset-cutout.png").exists()
 
 
 def test_mcp_validate_tool_returns_error_for_missing_path(tmp_path: Path) -> None:

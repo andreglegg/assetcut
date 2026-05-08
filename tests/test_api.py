@@ -23,10 +23,10 @@ def _checkerboard_asset(path: Path) -> None:
 
 
 def test_cut_image_api_integration_checkerboard_with_preview(tmp_path: Path) -> None:
-    input_path = tmp_path / "trap.png"
-    output_path = tmp_path / "trap-cutout.png"
-    report_path = tmp_path / "trap-report.json"
-    preview_path = tmp_path / "trap-preview.png"
+    input_path = tmp_path / "asset.png"
+    output_path = tmp_path / "asset-cutout.png"
+    report_path = tmp_path / "asset-report.json"
+    preview_path = tmp_path / "asset-preview.png"
     _checkerboard_asset(input_path)
 
     result = api.cut_image(
@@ -48,8 +48,8 @@ def test_cut_image_api_integration_checkerboard_with_preview(tmp_path: Path) -> 
 
 
 def test_cut_image_api_dry_run_does_not_write(tmp_path: Path) -> None:
-    input_path = tmp_path / "trap.png"
-    output_path = tmp_path / "trap-cutout.png"
+    input_path = tmp_path / "asset.png"
+    output_path = tmp_path / "asset-cutout.png"
     _checkerboard_asset(input_path)
 
     result = api.cut_image(input_path, output_path=output_path, dry_run=True, preview=True)
@@ -59,7 +59,7 @@ def test_cut_image_api_dry_run_does_not_write(tmp_path: Path) -> None:
     assert result["backend"] == "checkerboard"
     assert result["output_exists"] is False
     assert not output_path.exists()
-    assert not (tmp_path / "trap-preview.png").exists()
+    assert not (tmp_path / "asset-preview.png").exists()
 
 
 def test_cut_image_api_returns_structured_error(tmp_path: Path) -> None:
@@ -95,7 +95,7 @@ def test_cut_folder_api_enforces_max_files(tmp_path: Path) -> None:
 
 
 def test_cut_cli_dry_run_json_does_not_write(tmp_path: Path) -> None:
-    input_path = tmp_path / "trap.png"
+    input_path = tmp_path / "asset.png"
     _checkerboard_asset(input_path)
 
     result = CliRunner().invoke(app, ["cut", str(input_path), "--dry-run", "--json"])
@@ -104,4 +104,4 @@ def test_cut_cli_dry_run_json_does_not_write(tmp_path: Path) -> None:
     payload = json.loads(result.output)
     assert payload["dry_run"] is True
     assert payload["backend"] == "checkerboard"
-    assert not (tmp_path / "trap-cutout.png").exists()
+    assert not (tmp_path / "asset-cutout.png").exists()
