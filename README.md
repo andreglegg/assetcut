@@ -170,7 +170,7 @@ MCP clients such as Claude Desktop or Codex start `assetcut-mcp` as a local stdi
 server. After launch, the client asks the server for its tool list and receives
 the tool names, descriptions, and input schemas automatically.
 
-Claude-style MCP client configuration:
+Claude Desktop MCP client configuration:
 
 ```json
 {
@@ -180,6 +180,13 @@ Claude-style MCP client configuration:
     }
   }
 }
+```
+
+Claude Code CLI configuration:
+
+```bash
+claude mcp add -s user assetcut -- /absolute/path/to/assetcut/.venv/bin/assetcut-mcp
+claude mcp list
 ```
 
 Codex-style MCP client configuration:
