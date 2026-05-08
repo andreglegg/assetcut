@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,34 @@ def test_mcp_doctor_tool_returns_structured_result() -> None:
 
     assert result["ok"] is True
     assert result["checks"]["checkerboard_backend"] is True
+
+
+def test_mcp_help_exits_cleanly(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        mcp_server.main(["--help"])
+
+    assert exc_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "assetcut-mcp" in output
+    assert "--tools" in output
+    assert "--client-config" in output
+
+
+def test_mcp_tools_output_lists_registered_tools(capsys: pytest.CaptureFixture[str]) -> None:
+    mcp_server.main(["--tools"])
+
+    output = capsys.readouterr().out
+    assert "assetcut_cut_image" in output
+    assert "assetcut_cut_folder" in output
+    assert "assetcut_validate" in output
+    assert "assetcut_preview" in output
+    assert "assetcut_doctor" in output
+
+
+def test_mcp_client_config_is_generic_json() -> None:
+    payload = json.loads(mcp_server.render_client_config(command="/tmp/assetcut-mcp"))
+
+    assert payload == {"mcpServers": {"assetcut": {"command": "/tmp/assetcut-mcp"}}}
 
 
 def test_mcp_cut_image_tool_supports_dry_run(tmp_path: Path) -> None:

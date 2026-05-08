@@ -33,6 +33,16 @@ The first `rembg` run may download model weights into its local cache.
 
 ## Quick Start
 
+Show available commands:
+
+```bash
+assetcut --help
+assetcut cut --help
+assetcut validate --help
+assetcut preview --help
+assetcut doctor --help
+```
+
 Cut one image:
 
 ```bash
@@ -147,7 +157,19 @@ Run the stdio server:
 assetcut-mcp
 ```
 
-Example MCP client configuration:
+Human-facing MCP help:
+
+```bash
+assetcut-mcp --help
+assetcut-mcp --tools
+assetcut-mcp --client-config
+```
+
+MCP clients such as Claude Desktop or Codex start `assetcut-mcp` as a local stdio
+server. After launch, the client asks the server for its tool list and receives
+the tool names, descriptions, and input schemas automatically.
+
+Claude-style MCP client configuration:
 
 ```json
 {
@@ -157,6 +179,13 @@ Example MCP client configuration:
     }
   }
 }
+```
+
+Codex-style MCP client configuration:
+
+```toml
+[mcp_servers.assetcut]
+command = "/absolute/path/to/assetcut/.venv/bin/assetcut-mcp"
 ```
 
 Exposed tools:

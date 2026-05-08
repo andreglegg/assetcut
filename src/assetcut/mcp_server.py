@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import argparse
+import json
+import shutil
+import sys
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from assetcut import api
@@ -11,6 +17,79 @@ except ImportError as exc:  # pragma: no cover - exercised only without optional
 
 
 mcp = FastMCP("AssetCut", json_response=True)
+
+
+@dataclass(frozen=True)
+class McpToolInfo:
+    name: str
+    description: str
+
+
+MCP_TOOLS = (
+    McpToolInfo(
+        "assetcut_cut_image",
+        "Remove a background from one local image and write a real transparent PNG.",
+    ),
+    McpToolInfo(
+        "assetcut_cut_folder",
+        "Cut a folder of local images and write PNG cutouts plus a manifest.",
+    ),
+    McpToolInfo(
+        "assetcut_validate",
+        "Validate that a local image or folder contains real transparent PNG cutouts.",
+    ),
+    McpToolInfo(
+        "assetcut_preview",
+        "Create a local light/dark/color preview contact sheet for cutout QA.",
+    ),
+    McpToolInfo(
+        "assetcut_doctor",
+        "Report local AssetCut dependency and backend availability.",
+    ),
+)
+
+
+def render_tools_text() -> str:
+    lines = [
+        "AssetCut MCP tools:",
+        "",
+        *[f"- {tool.name}: {tool.description}" for tool in MCP_TOOLS],
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def render_client_config(command: str | None = None) -> str:
+    resolved_command = command or shutil.which("assetcut-mcp") or "assetcut-mcp"
+    config = {
+        "mcpServers": {
+            "assetcut": {
+                "command": resolved_command,
+            }
+        }
+    }
+    return json.dumps(config, indent=2) + "\n"
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="assetcut-mcp",
+        description="Run the AssetCut MCP stdio server.",
+        epilog=(
+            "Configure this command in an MCP client. The client will discover "
+            "AssetCut tools, descriptions, and input schemas automatically."
+        ),
+    )
+    parser.add_argument(
+        "--tools",
+        action="store_true",
+        help="List tools exposed by the MCP server and exit.",
+    )
+    parser.add_argument(
+        "--client-config",
+        action="store_true",
+        help="Print a generic MCP client JSON config and exit.",
+    )
+    return parser
 
 
 @mcp.tool()
@@ -111,7 +190,14 @@ def assetcut_doctor() -> dict[str, Any]:
     return api.doctor()
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
+    args = build_arg_parser().parse_args(argv)
+    if args.tools:
+        sys.stdout.write(render_tools_text())
+        return
+    if args.client_config:
+        sys.stdout.write(render_client_config())
+        return
     mcp.run(transport="stdio")
 
 
