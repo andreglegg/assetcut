@@ -23,10 +23,11 @@ git clone <repo-url>
 cd assetcut
 
 python3.12 -m venv .venv
-source .venv/bin/activate
 
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev,rembg]"
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e ".[dev,rembg]"
+
+source .venv/bin/activate
 ```
 
 The first `rembg` run may download model weights into its local cache.
@@ -148,7 +149,7 @@ API functions return JSON-serializable dictionaries. Failures use structured err
 Install the optional MCP extra:
 
 ```bash
-python -m pip install -e ".[mcp,rembg]"
+.venv/bin/python -m pip install -e ".[mcp,rembg]"
 ```
 
 Run the stdio server:

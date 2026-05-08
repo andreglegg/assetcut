@@ -6,6 +6,7 @@ import shutil
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from assetcut import api
@@ -58,8 +59,17 @@ def render_tools_text() -> str:
     return "\n".join(lines) + "\n"
 
 
+def default_command_path() -> str:
+    argv_path = Path(sys.argv[0])
+    if argv_path.name == "assetcut-mcp" and (
+        argv_path.is_absolute() or argv_path.parent != Path(".")
+    ):
+        return str(argv_path.resolve())
+    return shutil.which("assetcut-mcp") or "assetcut-mcp"
+
+
 def render_client_config(command: str | None = None) -> str:
-    resolved_command = command or shutil.which("assetcut-mcp") or "assetcut-mcp"
+    resolved_command = command or default_command_path()
     config = {
         "mcpServers": {
             "assetcut": {
