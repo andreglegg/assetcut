@@ -1,0 +1,19 @@
+.venv/
+.idea/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+samples/out/
+samples/validation-report.json
+.DS_Store
+
+# Local manual cutout experiments
+/input.*
+/*-cutout*.png
+/*-cutout*.json
+/*-preview.png
