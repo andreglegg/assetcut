@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from assetcut.chroma import parse_hex_color
 from assetcut.config import QualityPreset
 from assetcut.cut import (
     default_batch_output_folder,
@@ -23,6 +24,7 @@ from assetcut.preview import (
     create_folder_preview,
     default_preview_path,
 )
+from assetcut.slice import run_slice
 from assetcut.validate import validate_folder, validate_image
 
 DEFAULT_MAX_BATCH_FILES = 500
@@ -246,6 +248,72 @@ def dry_run_cut_folder(
     )
 
 
+def slice_sheet(
+    input_path: str | Path,
+    output_folder: str | Path | None = None,
+    mode: str = "auto",
+    tile: str | None = None,
+    margin: int = 0,
+    spacing: int = 0,
+    backend: str = "auto",
+    key_color: str | None = None,
+    tolerance: float = 60,
+    drop_empty: bool = True,
+    trim_tiles: bool | None = None,
+    pad: int = 0,
+    min_area: int = 64,
+    alpha_threshold: int = 1,
+    overwrite: bool = False,
+    base_dir: str | Path | None = None,
+) -> dict[str, Any]:
+    """Cut a sprite/tile sheet into individual transparent tile PNGs."""
+    try:
+        input_file = _resolve_input_path(input_path, base_dir=base_dir, must_be_dir=False)
+        assert input_file is not None
+        output_dir = _resolve_output_path(output_folder, base_dir=base_dir)
+        tile_width, tile_height = _parse_tile_size(tile)
+        rgb = parse_hex_color(key_color) if key_color else None
+
+        result = run_slice(
+            input_path=input_file,
+            out=output_dir,
+            mode=mode,
+            tile_width=tile_width,
+            tile_height=tile_height,
+            margin=margin,
+            spacing=spacing,
+            backend=backend,
+            key_color=rgb,
+            tolerance=tolerance,
+            drop_empty=drop_empty,
+            trim_tiles=trim_tiles,
+            pad=pad,
+            min_area=min_area,
+            alpha_threshold=alpha_threshold,
+            overwrite=overwrite,
+        )
+        return result.to_dict()
+    except Exception as exc:
+        return error_response(exc)
+
+
+def _parse_tile_size(tile: str | None) -> tuple[int | None, int | None]:
+    if tile is None:
+        return None, None
+    text = tile.lower().replace(" ", "")
+    separator = "x" if "x" in text else ("," if "," in text else None)
+    parts = text.split(separator) if separator else [text]
+    try:
+        if len(parts) == 1:
+            size = int(parts[0])
+            return size, size
+        if len(parts) == 2:
+            return int(parts[0]), int(parts[1])
+    except ValueError as exc:
+        raise ValueError(f"Tile size must look like 96x96 or 96: {tile}") from exc
+    raise ValueError(f"Tile size must look like 96x96 or 96: {tile}")
+
+
 def validate(
     path: str | Path,
     recursive: bool = True,
@@ -317,6 +385,7 @@ def doctor() -> dict[str, Any]:
         "transparent_background": importlib.util.find_spec("transparent_background") is not None,
         "alpha_backend": True,
         "checkerboard_backend": True,
+        "chroma_backend": True,
     }
     return {"ok": checks["pillow"] and checks["opencv"], "checks": checks}
 

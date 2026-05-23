@@ -47,6 +47,11 @@ mcp_app = typer.Typer(help="Install and inspect AssetCut MCP client configuratio
 app.add_typer(mcp_app, name="mcp")
 
 
+class SliceMode(StrEnum):
+    auto = "auto"
+    grid = "grid"
+
+
 class McpInstallTarget(StrEnum):
     all = "all"
     claude_code = "claude-code"
@@ -430,6 +435,7 @@ def doctor() -> None:
     checks: list[tuple[str, bool, str]] = []
     checks.append(("alpha backend", True, "built in"))
     checks.append(("checkerboard backend", True, "built in"))
+    checks.append(("chroma backend", True, "built in"))
 
     try:
         import PIL  # noqa: F401
@@ -769,6 +775,97 @@ def atlas(
     json_path.write_text(json.dumps(result.to_json_dict(), indent=2), encoding="utf-8")
     console.print(f"[green]Wrote[/green] {out}")
     console.print(f"[green]Wrote[/green] {json_path}")
+
+
+@app.command(name="slice")
+def slice_cmd(
+    input_path: Annotated[Path, typer.Argument(help="Sprite or tile sheet image.")],
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", "-o", help="Output folder for tile PNGs."),
+    ] = None,
+    mode: Annotated[
+        SliceMode,
+        typer.Option("--mode", help="auto = detect tiles by gaps; grid = fixed cells."),
+    ] = SliceMode.auto,
+    tile: Annotated[
+        str | None,
+        typer.Option("--tile", help="Grid tile size, e.g. 96x96 (grid mode)."),
+    ] = None,
+    margin: Annotated[int, typer.Option("--margin", help="Grid outer margin in px.")] = 0,
+    spacing: Annotated[int, typer.Option("--spacing", help="Grid gap between cells in px.")] = 0,
+    backend: Annotated[
+        str,
+        typer.Option("--backend", help="Background removal: auto, chroma, alpha, none, rembg."),
+    ] = "auto",
+    key_color: Annotated[
+        str | None,
+        typer.Option("--key-color", help="Force chroma key color, e.g. ff00ff."),
+    ] = None,
+    tolerance: Annotated[
+        float,
+        typer.Option("--tolerance", help="Chroma key color distance tolerance."),
+    ] = 60,
+    keep_empty: Annotated[
+        bool,
+        typer.Option("--keep-empty", help="Keep fully transparent grid cells."),
+    ] = False,
+    trim_tiles: Annotated[
+        bool | None,
+        typer.Option(
+            "--trim/--no-trim",
+            help="Trim each tile to its content (default: on for auto, off for grid).",
+        ),
+    ] = None,
+    pad: Annotated[int, typer.Option("--pad", help="Transparent padding per tile.")] = 0,
+    min_area: Annotated[
+        int,
+        typer.Option("--min-area", help="Auto mode: drop regions smaller than this (px)."),
+    ] = 64,
+    alpha_threshold: Annotated[
+        int,
+        typer.Option("--alpha-threshold", help="Alpha value treated as content."),
+    ] = 1,
+    overwrite: Annotated[
+        bool,
+        typer.Option("--overwrite", help="Replace existing output."),
+    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print structured JSON.")] = False,
+    reveal: Annotated[bool, typer.Option("--reveal", help="Reveal output in Finder.")] = False,
+) -> None:
+    """Slice a sprite/tile sheet into individual transparent tile PNGs."""
+    response = assetcut_api.slice_sheet(
+        input_path=input_path,
+        output_folder=out,
+        mode=mode.value,
+        tile=tile,
+        margin=margin,
+        spacing=spacing,
+        backend=backend,
+        key_color=key_color,
+        tolerance=tolerance,
+        drop_empty=not keep_empty,
+        trim_tiles=trim_tiles,
+        pad=pad,
+        min_area=min_area,
+        alpha_threshold=alpha_threshold,
+        overwrite=overwrite,
+    )
+
+    if json_output:
+        _print_json(response)
+        raise typer.Exit(code=0 if response.get("ok") else 1)
+
+    if not response.get("ok"):
+        console.print(f"[red]Error:[/red] {response['error']['message']}")
+        raise typer.Exit(code=1)
+
+    console.print(f"Backend: [bold]{response['backend']}[/bold]")
+    console.print(f"[green]Sliced[/green] {response['tiles']} tiles ({response['mode']} mode)")
+    console.print(f"[green]Output[/green] {response['output_folder']}")
+    console.print(f"[green]Manifest[/green] {response['manifest']}")
+    if reveal:
+        _reveal_path(Path(response["output_folder"]))
 
 
 @app.command()

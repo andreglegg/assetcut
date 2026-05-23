@@ -36,6 +36,10 @@ MCP_TOOLS = (
         "Cut a folder of local images and write PNG cutouts plus a manifest.",
     ),
     McpToolInfo(
+        "assetcut_slice",
+        "Slice a local sprite/tile sheet into individual transparent tile PNGs.",
+    ),
+    McpToolInfo(
         "assetcut_validate",
         "Validate that a local image or folder contains real transparent PNG cutouts.",
     ),
@@ -160,6 +164,46 @@ def assetcut_cut_folder(
         preview_path=preview_path,
         dry_run=dry_run,
         max_files=max_files,
+        base_dir=base_dir,
+    )
+
+
+@mcp.tool()
+def assetcut_slice(
+    input_path: str,
+    output_folder: str | None = None,
+    mode: str = "auto",
+    tile: str | None = None,
+    margin: int = 0,
+    spacing: int = 0,
+    backend: str = "auto",
+    key_color: str | None = None,
+    tolerance: float = 60,
+    drop_empty: bool = True,
+    trim_tiles: bool | None = None,
+    pad: int = 0,
+    min_area: int = 64,
+    alpha_threshold: int = 1,
+    overwrite: bool = False,
+    base_dir: str | None = None,
+) -> dict[str, Any]:
+    """Slice a local sprite/tile sheet into individual transparent tile PNGs."""
+    return api.slice_sheet(
+        input_path=input_path,
+        output_folder=output_folder,
+        mode=mode,
+        tile=tile,
+        margin=margin,
+        spacing=spacing,
+        backend=backend,
+        key_color=key_color,
+        tolerance=tolerance,
+        drop_empty=drop_empty,
+        trim_tiles=trim_tiles,
+        pad=pad,
+        min_area=min_area,
+        alpha_threshold=alpha_threshold,
+        overwrite=overwrite,
         base_dir=base_dir,
     )
 

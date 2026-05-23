@@ -10,6 +10,7 @@ from PIL import Image
 from assetcut.alpha import alpha_stats
 from assetcut.batch import BatchRecord, BatchSummary
 from assetcut.checkerboard import detect_checkerboard_background
+from assetcut.chroma import detect_chroma_key
 from assetcut.config import ProcessingOptions, QualityPreset, options_for_quality
 from assetcut.engine import process_image
 from assetcut.image_io import iter_image_files, load_image
@@ -124,6 +125,13 @@ def select_backend(image: Image.Image, requested_backend: str = "auto") -> Backe
             reason="Detected baked checkerboard background.",
         )
 
+    chroma = detect_chroma_key(image)
+    if chroma is not None:
+        return BackendSelection(
+            name="chroma",
+            reason=f"Detected solid chroma-key background {chroma.color}.",
+        )
+
     stats = alpha_stats(image)
     if stats.has_real_transparency:
         return BackendSelection(
@@ -143,7 +151,7 @@ def select_backend_for_path(path: Path, requested_backend: str = "auto") -> Back
 
 def options_for_cut(quality: QualityPreset, backend_name: str) -> ProcessingOptions:
     options = options_for_quality(quality)
-    if backend_name in {"alpha", "checkerboard"} and quality != QualityPreset.pixel:
+    if backend_name in {"alpha", "checkerboard", "chroma"} and quality != QualityPreset.pixel:
         return ProcessingOptions(
             mode=options.mode,
             edge_clean=options.edge_clean,

@@ -8,6 +8,8 @@ It is built for sprites, props, UI elements, icons, and generated assets that of
 
 - Remove backgrounds from one image or a folder.
 - Detect baked checkerboard transparency and cut it cleanly.
+- Detect and cut solid chroma-key backgrounds (magenta, green screen, etc.).
+- Slice sprite and tile sheets into individual transparent tile PNGs.
 - Export PNG RGBA with real alpha.
 - Validate transparency and catch bad cutouts.
 - Trim, pad, hard-threshold, and clean alpha edges.
@@ -110,6 +112,7 @@ Use an explicit backend:
 
 ```bash
 assetcut remove input.png --backend checkerboard --out output.png --trim --pad 32 --validate
+assetcut remove input.png --backend chroma --out output.png --trim --pad 32 --validate
 assetcut remove input.png --backend rembg --out output.png --trim --pad 32 --validate
 ```
 
@@ -119,6 +122,58 @@ Check local dependencies:
 assetcut doctor
 ```
 
+## Chroma-Key Backgrounds
+
+Many generated tile and sprite sheets ship on a flat key color such as magenta or
+green. The `chroma` backend keys on color, so it removes the background everywhere
+it appears, including enclosed regions like the hollow centers of frame tiles.
+
+`assetcut cut` auto-detects vivid keys, so usually you just run:
+
+```bash
+assetcut cut sheet.png
+```
+
+Force a specific key color or widen the match when needed:
+
+```bash
+assetcut remove sheet.png --backend chroma --out sheet-cutout.png
+```
+
+## Slice Sprite and Tile Sheets
+
+Cut a sheet into individual transparent tile PNGs plus a `manifest.json` of frame
+coordinates. The background is removed first (auto chroma-key by default).
+
+Auto mode detects each tile by the transparent gaps between them — best for mixed
+or irregular layouts:
+
+```bash
+assetcut slice sheet.png --out tiles --pad 2
+```
+
+Grid mode cuts fixed cells — best for evenly spaced sheets:
+
+```bash
+assetcut slice sheet.png --out tiles --mode grid --tile 96x96 --spacing 2 --margin 0
+```
+
+Useful options:
+
+- `--key-color ff00ff`: force the chroma key color.
+- `--tolerance 60`: color match distance for the key.
+- `--backend auto|chroma|alpha|none`: how to obtain transparency before slicing.
+- `--keep-empty`: keep blank grid cells (grid mode).
+- `--trim` / `--no-trim`: trim each tile to its content. Default is on for auto
+  mode and off for grid mode, so grid cells stay uniform.
+- `--pad N`: transparent padding added around each tile.
+- `--min-area N`: drop specks smaller than N pixels (auto mode).
+
+Each tile is written as `<sheet>_000.png`, `<sheet>_001.png`, and so on. The
+`manifest.json` records each frame's `x`, `y`, `width`, and `height` as the source
+rectangle in the original sheet (independent of trim and pad), ready for engine
+import.
+
 ## Python API
 
 ```python
@@ -126,6 +181,7 @@ from assetcut import api
 
 result = api.cut_image("input.png", preview=True)
 batch = api.cut_folder("raw-assets", output_folder="cutouts")
+tiles = api.slice_sheet("sheet.png", output_folder="tiles", mode="auto")
 report = api.validate("input-cutout.png")
 preview = api.preview("input.png", cutout_path="input-cutout.png")
 doctor = api.doctor()
@@ -221,6 +277,7 @@ Exposed tools:
 
 - `assetcut_cut_image`
 - `assetcut_cut_folder`
+- `assetcut_slice`
 - `assetcut_validate`
 - `assetcut_preview`
 - `assetcut_doctor`
@@ -239,6 +296,10 @@ mypy src
 - Cutouts are saved as PNG RGBA.
 - Existing outputs are preserved unless `--overwrite` is passed.
 - Everything runs locally; no cloud API is required.
+
+## License
+
+AssetCut is released under the [MIT License](LICENSE).
 
 ## Credits
 
